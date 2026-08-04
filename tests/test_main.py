@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
-from unittest.mock import patch
-from fastapi import HTTPException
+from app.core.exceptions import LLMServiceError
+from app.services.llm_service import LLMService, get_llm_service
 
 client = TestClient(app)
 
@@ -51,32 +51,45 @@ def test_message_too_long():
     assert response.status_code == 422
     assert response.json()["detail"][0]["msg"] == "String should have at most 1000 characters"
 
+class FakeLLMService:
+    def generate_response(self, message: str) -> str:
+        return "This is a mocked response"
+
+def get_fake_llm_service() -> FakeLLMService:
+    return FakeLLMService()
+
 def test_valid_chat():
     #mock the generate_response function to return a specific response. This allows you to test the /chat endpoint without actually calling the LLM service.
-    with patch(
-        "app.main.generate_response",
-        return_value="This is a mocked response"
-    ):
-        response = client.post(
-            "/chat",
-            json={"message": "What is Redis?"}
-        )
+    
+    app.dependency_overrides[get_llm_service] = get_fake_llm_service
 
+    response = client.post(
+        "/chat",
+        json={"message": "What is Redis?"}
+    )
+
+    app.dependency_overrides = {}  # Reset dependency overrides after the test
     assert response.status_code == 200
     assert response.json() == {
         "message": "What is Redis?",
         "response": "This is a mocked response"
     }
 
+class FailingLLMService:
+    def generate_response(self, message: str) -> str:
+        raise LLMServiceError("Unable to generate response")
+
+def get_failing_llm_service() -> FailingLLMService:
+    return FailingLLMService()
+
 def test_llm_failure():
-    #mock the generate_response function to raise an HTTPException with a 500 status code and a specific detail message. This simulates a failure in the LLM service.
-    with patch(
-        "app.main.generate_response",
-        side_effect=HTTPException(status_code=500, detail="Unable to generate response")
-    ):
-        response = client.post(
-            "/chat",
-            json={"message": "What is Redis?"}
-        )   
+    #mock the generate_response function to raise an LLMServiceError with a 500 status code and a specific detail message. This simulates a failure in the LLM service.
+    
+    app.dependency_overrides[get_llm_service] = get_failing_llm_service
+    response = client.post(
+        "/chat",
+        json={"message": "What is Redis?"}
+    )   
+    app.dependency_overrides = {}  # Reset dependency overrides after the test
     assert response.status_code == 500
     assert response.json()["detail"] == "Unable to generate response"

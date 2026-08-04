@@ -1,39 +1,35 @@
 import logging 
 from google import genai
-from fastapi import HTTPException
+from app.core.exceptions import LLMServiceError
 from app.core.config import settings
 
-#logger = Logging is better than print statements because it provides granular control over message severity, output destinations, and runtime filtering without requiring code changes
 logger = logging.getLogger(__name__)
 
-api_key = settings.llm_api_key
-llm_model = settings.llm_model
-
-client = genai.Client(api_key=api_key)
-
-def generate_response(message: str):
-    try:
-        interaction = client.interactions.create(
-            model=llm_model,
-            input=message
-        )
-
-        if not interaction.output_text:
-            logger.error("No output text received from LLM service")
-            raise HTTPException(
-                status_code=500,
-                detail="Unable to generate response"
+class LLMService:
+    def __init__(self):
+        self.client = genai.Client(api_key=settings.llm_api_key)
+        self.llm_model = settings.llm_model
+    
+    def generate_response(self, message: str)-> str:
+        try:
+            interaction = self.client.interactions.create(
+                model=self.llm_model,
+                input=message
             )
 
-        logger.info("Returning response from LLM service")
-        return interaction.output_text
-    
-    except HTTPException:
-        raise  # Re-raise the HTTPException to be handled by FastAPI
+            if not interaction.output_text:
+                logger.error("No output text received from LLM service")
+                raise LLMServiceError("Unable to generate response")
 
-    except Exception:
-        logger.exception("Error generating LLM response") #logger.exception() automatically includes the stack trace when called inside an except block.
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to generate response"
-        )
+            logger.info("Returning response from LLM service")
+            return interaction.output_text
+        
+        except LLMServiceError:
+            raise  # Re-raise the LLMServiceError to be handled by FastAPI
+
+        except Exception as exc:
+            logger.exception("Error generating LLM response") 
+            raise LLMServiceError("An error occurred while generating the response") from exc
+
+def get_llm_service()-> LLMService:
+    return LLMService()
