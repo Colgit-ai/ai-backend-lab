@@ -5,3 +5,6 @@ pydantic-settings
 google-genai
 pytest
 httpx
+sqlalchemy
+psycopg
+alembic

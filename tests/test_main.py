@@ -92,4 +92,4 @@ def test_llm_failure():
     )   
     app.dependency_overrides = {}  # Reset dependency overrides after the test
     assert response.status_code == 500
-    assert response.json()["detail"] == "Unable to generate response"
+    assert response.json()["detail"] == "An error occurred while generating the response"

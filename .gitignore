@@ -1,9 +1,29 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
 .venv/
 venv/
-__pycache__/
-*.pyc
+env/
+
+# Environment variables and secrets
 .env
-.idea/
+.env.*
+!.env.example
+
+# IDE and OS files
 .vscode/
-notes/
-app/test.py
+.idea/
+.DS_Store
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
