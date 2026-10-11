@@ -93,3 +93,27 @@ def test_llm_failure():
     app.dependency_overrides = {}  # Reset dependency overrides after the test
     assert response.status_code == 500
     assert response.json()["detail"] == "An error occurred while generating the response"
+
+
+def test_get_conversation_with_pagination():
+    response = client.get('/conversations?limit=3&offset=0')
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    assert len(response.json()) <= 3
+
+def test_get_conversations_rejects_zero_limits():
+    response = client.get('/conversations?limit=0&offset=0')
+
+    assert response.status_code == 422
+
+def test_get_conversations_rejects_limit_over_100():
+    response = client.get("/conversations?limit=101")
+
+    assert response.status_code == 422
+
+
+def test_get_conversations_rejects_negative_offset():
+    response = client.get("/conversations?offset=-1")
+
+    assert response.status_code == 422

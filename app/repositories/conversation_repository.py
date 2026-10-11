@@ -19,10 +19,11 @@ class ConversationRepository:
             self.db.rollback()
             raise e
 
-    def get_conversation(self, limit: int = 20)->list[Conversation]:
+    def get_conversation(self, limit: int = 20, offset: int = 0)->list[Conversation]:
         return (
             self.db.query(Conversation)
             .order_by(Conversation.id.desc())
+            .offset(offset)
             .limit(limit)
             .all()
         )

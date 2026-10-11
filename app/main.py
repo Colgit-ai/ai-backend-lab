@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.services.llm_service import get_llm_service, LLMService
@@ -69,8 +69,13 @@ def chat(
 
 @app.get("/conversations", response_model=list[ConversationResponse])
 def get_conversations(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db)
 ) -> list[ConversationResponse]:
     repository = ConversationRepository(db)
-    return repository.get_conversation()
+    return repository.get_conversation(
+        limit=limit,
+        offset=offset
+    )
     
