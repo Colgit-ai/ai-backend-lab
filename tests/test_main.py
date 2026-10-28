@@ -1,9 +1,11 @@
+from urllib import response
+
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.exceptions import LLMServiceError
 from app.services.llm_service import LLMService, get_llm_service
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 
 def test_health():
     response = client.get("/health")
@@ -17,7 +19,7 @@ def test_empty_message():
         json={"message": ""}
     )
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Value error, Message cannot be empty or whitespace"
+    assert response.json()["error"]["details"][0]["message"] == "Value error, Message cannot be empty or whitespace"
 
 def test_whitespace_message():
     response = client.post(
@@ -25,7 +27,7 @@ def test_whitespace_message():
         json={"message":"       "}
     )
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Value error, Message cannot be empty or whitespace"
+    assert response.json()["error"]["details"][0]["message"] == "Value error, Message cannot be empty or whitespace"
 
 def test_missing_message():
     response = client.post(
@@ -33,7 +35,7 @@ def test_missing_message():
         json={}
     )
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Field required"
+    assert response.json()["error"]["details"][0]["message"] == "Field required"
 
 def test_wrong_datatype():
     response = client.post(
@@ -41,7 +43,7 @@ def test_wrong_datatype():
         json={"message": 123211}
     )   
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "Value error, Message must be a string"
+    assert response.json()["error"]["details"][0]["message"] == "Value error, Message must be a string"
 
 def test_message_too_long():
     response = client.post(
@@ -49,7 +51,7 @@ def test_message_too_long():
         json={"message": "a" * 1001}
     )
     assert response.status_code == 422
-    assert response.json()["detail"][0]["msg"] == "String should have at most 1000 characters"
+    assert response.json()["error"]["details"][0]["message"] == "String should have at most 1000 characters"
 
 class FakeLLMService:
     def generate_response(self, message: str) -> str:
@@ -92,7 +94,10 @@ def test_llm_failure():
     )   
     app.dependency_overrides = {}  # Reset dependency overrides after the test
     assert response.status_code == 500
-    assert response.json()["detail"] == "An error occurred while generating the response"
+    assert response.json()["error"]["code"] == "LLM_SERVICE_ERROR"
+    assert response.json()["error"]["message"] == (
+        "An error occurred while generating the response"
+    )
 
 
 def test_get_conversation_with_pagination():
